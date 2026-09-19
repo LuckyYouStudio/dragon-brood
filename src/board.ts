@@ -61,6 +61,26 @@ export function findMove(grid: Grid): [Cell, Cell] | null {
   return null;
 }
 
+/** Every swap that would make a match. */
+export function findMoves(grid: Grid): Array<[Cell, Cell]> {
+  const moves: Array<[Cell, Cell]> = [];
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      for (const [dc, dr] of [[1, 0], [0, 1]]) {
+        const c2 = c + dc;
+        const r2 = r + dr;
+        if (c2 >= COLS || r2 >= ROWS) continue;
+        const a = { c, r };
+        const b = { c: c2, r: r2 };
+        swapCells(grid, a, b);
+        if (findMatches(grid).length > 0) moves.push([a, b]);
+        swapCells(grid, a, b);
+      }
+    }
+  }
+  return moves;
+}
+
 /** A fresh board with no standing matches and at least one available move. */
 export function newGrid(): Grid {
   for (;;) {

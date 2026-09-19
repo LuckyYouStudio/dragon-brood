@@ -53,7 +53,12 @@
 
         <section class="board" data-i18n-aria="board" aria-label="Match-3 board">
           <canvas id="board-canvas"></canvas>
-          <p class="board__hint" data-i18n="boardHint">Match 3 to feed the nest. Matching is free — only cracking costs.</p>
+          <div class="board__foot">
+            <p class="board__hint" data-i18n="boardHint">Match 3 to feed the nest. Matching is free — only cracking costs.</p>
+            <button id="btn-auto" class="auto" type="button" aria-pressed="false">
+              <span class="auto__dot" aria-hidden="true"></span><span data-i18n="auto">Auto-match</span>
+            </button>
+          </div>
         </section>
 
         <section class="bet" aria-label="Bet">

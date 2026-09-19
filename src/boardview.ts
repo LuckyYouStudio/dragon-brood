@@ -7,6 +7,7 @@ import {
   collapse,
   findMatches,
   findMove,
+  findMoves,
   heatFor,
   newGrid,
   swapCells,
@@ -32,6 +33,9 @@ export type ClearEvent = { cells: Array<{ x: number; y: number; color: number }>
 type Popup = { x: number; y: number; text: string; color: string; age: number; big: boolean };
 
 const CLEAR_TIME = 0.22;
+/** Auto-match is deliberately slower than a person and never plans chains: hands still win. */
+const AUTO_INTERVAL = 1.7;
+const AUTO_YIELD = 4; // seconds the board waits after the player touches it
 const wait = (ms: number) => new Promise<void>(resolve => window.setTimeout(resolve, ms));
 
 export class BoardView {
@@ -49,6 +53,9 @@ export class BoardView {
   private settleWaiters: Array<() => void> = [];
   private t = 0;
   private popups: Popup[] = [];
+  private auto = false;
+  private autoClock = 0;
+  private autoYield = 0;
 
   onClear: (event: ClearEvent) => void = () => {};
 
@@ -106,6 +113,7 @@ export class BoardView {
   private onDown = (event: PointerEvent): void => {
     unlock();
     this.idle = 0;
+    this.autoYield = AUTO_YIELD; // the player's hands always come first
     this.clearHint();
     if (this.busy) return;
     const cell = this.cellFromEvent(event);
@@ -247,6 +255,28 @@ export class BoardView {
     return new Promise(resolve => this.settleWaiters.push(resolve));
   }
 
+  /** Lets the nest feed itself: the board plays a random available move every so often. */
+  setAuto(on: boolean): void {
+    this.auto = on;
+    this.autoClock = AUTO_INTERVAL * 0.6;
+    this.autoYield = 0;
+  }
+
+  private async autoMove(): Promise<void> {
+    const moves = findMoves(this.grid);
+    if (!moves.length) return;
+    const [a, b] = moves[Math.floor(Math.random() * moves.length)];
+    this.clearHint();
+    this.selected = a; // show which egg is about to move, as a person's tap would
+    await wait(200);
+    if (this.busy || !this.auto || this.autoYield > 0) {
+      this.selected = null;
+      return;
+    }
+    this.selected = null;
+    await this.trySwap(a, b);
+  }
+
   /** Wiggles one available move right away (the first-run coach asks for it). */
   showHint(): void {
     if (this.busy || this.hintShown) return;
@@ -300,9 +330,18 @@ export class BoardView {
       waiters.forEach(resolve => resolve());
     }
 
+    this.autoYield = Math.max(0, this.autoYield - dt);
+    if (this.auto && !this.busy && this.autoYield <= 0) {
+      this.autoClock += dt;
+      if (this.autoClock >= AUTO_INTERVAL) {
+        this.autoClock = 0;
+        void this.autoMove();
+      }
+    }
+
     if (!this.busy) {
       this.idle += dt;
-      if (this.idle > 7 && !this.hintShown) {
+      if (this.idle > 7 && !this.hintShown && !this.auto) {
         const move = findMove(this.grid);
         if (move) {
           this.hintShown = true;

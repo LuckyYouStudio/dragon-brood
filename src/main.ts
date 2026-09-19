@@ -40,6 +40,7 @@ const el = {
   balance: $('balance'),
   sound: $<HTMLButtonElement>('btn-sound'),
   lang: $<HTMLButtonElement>('btn-lang'),
+  auto: $<HTMLButtonElement>('btn-auto'),
   infoBtn: $<HTMLButtonElement>('btn-info'),
   info: $<HTMLDialogElement>('info'),
   infoBody: $('info-body'),
@@ -738,6 +739,31 @@ document.querySelectorAll<HTMLButtonElement>('[data-quick]').forEach(button =>
   }),
 );
 
+// Auto-match: for players who came to crack eggs, not to swap them.
+let autoMatch = false;
+try {
+  autoMatch = window.localStorage.getItem('brood.auto') === '1';
+} catch {
+  /* storage may be blocked in a sandboxed iframe */
+}
+function renderAuto(): void {
+  el.auto.setAttribute('aria-pressed', String(autoMatch));
+  el.auto.title = t('autoHint');
+  board.setAuto(autoMatch);
+}
+el.auto.addEventListener('click', () => {
+  unlock();
+  sfx.select();
+  autoMatch = !autoMatch;
+  try {
+    window.localStorage.setItem('brood.auto', autoMatch ? '1' : '0');
+  } catch {
+    /* ignore */
+  }
+  if (autoMatch) coachDone();
+  renderAuto();
+});
+
 function renderSound(): void {
   el.sound.textContent = isMuted() ? '🔇' : '🔊';
 }
@@ -778,6 +804,7 @@ function infoHtml(): string {
 function renderLanguage(): void {
   applyStaticStrings();
   el.lang.textContent = t('language');
+  el.auto.title = t('autoHint');
   document.title = lang() === 'zh' ? '龙巢 Dragon Brood — 三消养蛋，付费开蛋' : 'Dragon Brood — match the clutch, crack the egg';
   el.sizes.replaceChildren();
   if (el.info.open) el.infoBody.innerHTML = infoHtml();
@@ -882,6 +909,7 @@ link = connectHost(() => {
 size = maxUnlocked();
 nest.setSize(size, false);
 renderSound();
+renderAuto();
 renderLanguage();
 layout();
 render();
