@@ -11,6 +11,7 @@ import { connectHost, type HostLink } from './host';
 import { applyStaticStrings, lang, rankName, setHostLocale, sizeName, t, toggleLang } from './i18n';
 import { NestView } from './nest';
 import {
+  CRACK_HEAT,
   DUD_HEAT_REFUND,
   HEAT_CAP,
   MAX_SIZE,
@@ -463,7 +464,7 @@ function showResult(rank: Rank, multX100: number, wager: bigint, payout: bigint,
     el.result.innerHTML = `<div class="result__mult">${t('coldShell')}</div><div class="result__pay">${t('nothing')}</div>${back}`;
     return;
   }
-  el.result.innerHTML = `<div class="result__rank">${rankName(rank)}</div><div class="result__mult">${formatMult(multX100)}</div><div class="result__pay"></div>`;
+  el.result.innerHTML = `<div class="result__rank">${rankName(rank)}</div><div class="result__mult">${formatMult(multX100)}</div><div class="result__pay"></div><div class="result__heat">${t('crackHeat', { n: heatRefund })}</div>`;
   const pay = el.result.querySelector('.result__pay') as HTMLElement;
   const start = performance.now();
   const duration = 500 + rank * 220;
@@ -521,8 +522,10 @@ async function present(rank: Rank, multX100: number, payout: bigint): Promise<vo
   });
   hitRank = rank;
   // A cold shell keeps the nest warm: part of the egg's heat comes back.
-  const heatRefund = rank === 0 ? Math.floor(SIZE_HEAT[current.size] * DUD_HEAT_REFUND) : 0;
-  if (heatRefund > 0) addHeat(heatRefund);
+  // …and every crack, win or lose, warms it a little. Flat, never tied to the price.
+  const heatRefund = CRACK_HEAT + (rank === 0 ? Math.floor(SIZE_HEAT[current.size] * DUD_HEAT_REFUND) : 0);
+  addHeat(heatRefund);
+  nest.pulseHeat();
   showResult(rank, multX100, current.wager, payout, heatRefund);
   const level = celebrationLevel(rank, multX100);
   const hold = celebrate(level, rank, multX100, payout);

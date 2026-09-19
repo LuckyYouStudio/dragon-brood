@@ -5,6 +5,7 @@ A casino game with a match-3 heart, built on the Chain.wtf Casino SDK for Chain 
 **Match dragon eggs → the egg in your nest grows → pay to crack it.**
 Matching is free. Cracking is the bet. A bigger egg holds bigger dragons and more cold shells.
 A cold shell gives half of the egg's heat back, so a dud never sends you back to zero.
+Every crack adds a flat 5 heat regardless of the price, so heat can never be bought faster with bigger bets.
 Players who only came to crack eggs can switch on **Auto-match**: the board plays itself
 (slower than hands, and it yields the moment you touch it).
 

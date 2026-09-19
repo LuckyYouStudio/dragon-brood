@@ -16,6 +16,8 @@ export const SIZE_HEAT = [0, 0, 30, 70, 130, 220] as const;
 export const HEAT_CAP = 660;
 /** A cold shell keeps the nest warm: this share of the egg's heat comes back on a dud. */
 export const DUD_HEAT_REFUND = 0.5;
+/** Every crack warms the nest a little, whatever the price — so pure bettors climb the sizes too. */
+export const CRACK_HEAT = 5;
 
 export type Row = { rank: Rank; weight: number; multX100: number };
 
