@@ -271,7 +271,7 @@ function renderSizes(): void {
       button.setAttribute('role', 'radio');
       button.style.setProperty('--c', SIZE_PALETTE[s]!.vein);
       button.style.setProperty('--s', String(0.7 + s * 0.12));
-      button.innerHTML = `<span class="size__egg"></span><span class="size__max">${maxMultiplierX(s)}×</span><span class="size__cost"></span>`;
+      button.innerHTML = `<span class="size__egg"></span><span class="size__upto">${t('upTo')}</span><span class="size__max">${maxMultiplierX(s)}×</span><span class="size__cost"></span>`;
       button.addEventListener('click', () => {
         unlock();
         if (inFlight() || heat < SIZE_HEAT[s]) {
