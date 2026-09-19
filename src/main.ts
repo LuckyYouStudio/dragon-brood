@@ -239,6 +239,15 @@ function chooseSize(next: number, announce: boolean): void {
   render();
 }
 
+/**
+ * Keeps the size the player picked; when the nest can no longer afford it, drops straight to the
+ * egg the current heat does pay for — never upward, that stays the player's call.
+ */
+function fitSizeToHeat(): void {
+  const affordable = maxUnlocked();
+  if (size > affordable) chooseSize(affordable, true);
+}
+
 function addHeat(amount: number): void {
   const before = maxUnlocked();
   heat = Math.min(HEAT_CAP, heat + amount);
@@ -493,8 +502,8 @@ function finishRound(): void {
   sparks.stopCelebration();
   sparks.dismissDragon();
   nest.reset();
-  // Keep the size the player picked; only step down when the nest can no longer afford it.
-  chooseSize(Math.min(size, maxUnlocked()), false);
+  fitSizeToHeat();
+  render();
 }
 
 async function present(rank: Rank, multX100: number, payout: bigint): Promise<void> {
@@ -537,6 +546,9 @@ async function present(rank: Rank, multX100: number, payout: bigint): Promise<vo
     demoHistory = [{ key: String(Date.now()), rank, multX100 }, ...demoHistory].slice(0, 12);
   }
   current.status = 'done';
+  // Show the egg the next crack will really use right away, not only once the nest resets.
+  fitSizeToHeat();
+  hitRank = size === current.size ? rank : null;
   render();
   resetTimer = window.setTimeout(finishRound, hold || (rank === 0 ? 1500 : 2200 + rank * 250));
 }

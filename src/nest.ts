@@ -18,6 +18,7 @@ export class NestView {
   private t = 0;
 
   private size = 1;
+  private roundSize = 1; // the egg being cracked keeps its look even if the selection changes under it
   private scale = SIZE_SCALE[1];
   private growPulse = 0;
   private heatPulse = 0;
@@ -84,6 +85,7 @@ export class NestView {
 
   startCracking(): void {
     this.phase = 'cracking';
+    this.roundSize = this.size;
     this.crackLevel = 0;
     this.crackTarget = 0.12;
     this.nextTap = 0.15;
@@ -285,7 +287,7 @@ export class NestView {
   draw(): void {
     const ctx = this.ctx;
     const { ew, eh, cx, cy } = this.eggDims();
-    const palette = SIZE_PALETTE[this.size]!;
+    const palette = SIZE_PALETTE[this.phase === 'idle' ? this.size : this.roundSize]!;
     ctx.clearRect(0, 0, this.w, this.h);
 
     // aura
