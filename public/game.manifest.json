@@ -11,11 +11,35 @@
     "zh": {
       "name": "龙巢",
       "description": "三消龙蛋喂大巢中的蛋，付费开蛋。蛋越大，龙越大、空壳也越多——每个尺寸的回报率都是 96%。"
+    },
+    "de": {
+      "name": "Dragon Brood",
+      "description": "Kombiniere Dracheneier, um größere Eier freizuschalten, und knacke sie gegen Einsatz. Größeres Ei, größere Drachen, mehr Nieten – jede Größe zahlt 96% zurück."
+    },
+    "es": {
+      "name": "Dragon Brood",
+      "description": "Combina huevos de dragón para desbloquear huevos mayores y paga para romperlos. Huevo más grande, dragones más grandes y más vacíos: todos los tamaños devuelven el 96%."
+    },
+    "ru": {
+      "name": "Dragon Brood",
+      "description": "Собирайте драконьи яйца, чтобы открыть яйца крупнее, и вскрывайте их за ставку. Чем больше яйцо, тем крупнее драконы и больше пустых — любой размер возвращает 96%."
+    },
+    "pt": {
+      "name": "Dragon Brood",
+      "description": "Combine ovos de dragão para liberar ovos maiores e pague para quebrá-los. Ovo maior, dragões maiores e mais vazios — todos os tamanhos devolvem 96%."
+    },
+    "vi": {
+      "name": "Dragon Brood",
+      "description": "Xếp trứng rồng để mở khóa trứng lớn hơn, rồi trả tiền để đập. Trứng càng lớn, rồng càng lớn và càng nhiều trứng rỗng — mọi cỡ đều hoàn trả 96%."
     }
   },
   "presentation": {
     "mode": "full-iframe",
-    "hostPanels": { "openSession": false, "history": false, "status": false }
+    "hostPanels": {
+      "openSession": false,
+      "history": false,
+      "status": false
+    }
   },
   "capabilities": {
     "openSession": true,

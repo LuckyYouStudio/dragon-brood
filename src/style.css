@@ -47,6 +47,7 @@ button:disabled { cursor: not-allowed; }
   -webkit-background-clip: text; background-clip: text; color: transparent; white-space: nowrap;
 }
 .badge {
+  white-space: nowrap; flex: none;
   font-size: 10px; font-weight: 700; letter-spacing: 0.12em; padding: 3px 7px; border-radius: 999px;
   color: #120c05; background: var(--gold);
 }
@@ -61,6 +62,10 @@ button:disabled { cursor: not-allowed; }
   display: grid; place-items: center; font-weight: 700;
 }
 .icon-btn--text { white-space: nowrap; width: auto; min-width: 34px; padding: 0 9px; font-size: 12px; }
+.lang-pick { width: auto; max-width: 118px; padding: 0 6px; font-size: 12px; font-weight: 700; color: var(--ink); appearance: auto; cursor: pointer; }
+.lang-pick option { background: #17121c; color: var(--ink); }
+/* Cinzel has no Cyrillic or Vietnamese: give those languages one consistent serif instead of a glyph mix. */
+:lang(ru), :lang(vi) { --display: Georgia, 'Times New Roman', 'Noto Serif', serif; }
 .icon-btn:hover { border-color: #4a3a58; }
 
 /* ---------- layout ---------- */
@@ -230,11 +235,12 @@ button:disabled { cursor: not-allowed; }
   .shell { padding: 6px 8px 8px; }
   .brand__name { font-size: 13px; letter-spacing: 0.02em; }
   .brand { gap: 6px; }
-  .badge { font-size: 9px; padding: 2px 5px; }
+  .badge { display: none; } /* the balance already reads DEMO; the top bar needs the room for the language picker */
   .balance__label { display: none; }
   .topbar__right { gap: 6px; }
   .icon-btn { width: 30px; height: 30px; }
   .icon-btn--text { min-width: 30px; padding: 0 6px; font-size: 11px; }
+  .lang-pick { width: 74px; min-width: 74px; max-width: 74px; font-size: 11px; padding: 0 2px; }
   .balance__value { font-size: 12px; }
   .sizes { gap: 4px; }
   .heat__label { font-size: 10px; }

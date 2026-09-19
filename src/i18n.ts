@@ -1,7 +1,20 @@
-// English + Chinese. Inside the host the language follows `snapshot.ui.locale`; standalone it
-// follows the browser. The toggle in the top bar overrides both and is remembered.
+// Seven languages. Inside the host the language follows `snapshot.ui.locale`; standalone it
+// follows the browser. The picker in the top bar overrides both and is remembered.
 
-export type Lang = 'en' | 'zh';
+import { MORE } from './i18n-more';
+
+export type Lang = 'en' | 'de' | 'es' | 'ru' | 'pt' | 'vi' | 'zh';
+
+/** Shown in the picker, each in its own language. */
+export const LANGUAGES: Array<{ code: Lang; name: string; html: string }> = [
+  { code: 'en', name: 'English', html: 'en' },
+  { code: 'de', name: 'Deutsch', html: 'de' },
+  { code: 'es', name: 'Español', html: 'es' },
+  { code: 'ru', name: 'Русский', html: 'ru' },
+  { code: 'pt', name: 'Português', html: 'pt' },
+  { code: 'vi', name: 'Tiếng Việt', html: 'vi' },
+  { code: 'zh', name: '中文', html: 'zh-CN' },
+];
 
 const STRINGS = {
   en: {
@@ -10,7 +23,7 @@ const STRINGS = {
     balance: 'Balance',
     howTo: 'How to play',
     sound: 'Toggle sound',
-    language: '中文',
+    language: 'Language',
     nest: 'Nest',
     eggSize: 'Egg size',
     board: 'Match-3 board',
@@ -92,7 +105,7 @@ const STRINGS = {
     balance: '余额',
     howTo: '玩法说明',
     sound: '声音开关',
-    language: 'EN',
+    language: '语言',
     nest: '龙巢',
     eggSize: '龙蛋大小',
     board: '三消棋盘',
@@ -172,18 +185,24 @@ const STRINGS = {
 
 export type Key = keyof (typeof STRINGS)['en'];
 
+/** Every dictionary, for the placeholder-consistency test. */
+export const ALL_STRINGS: Record<Lang, Record<Key, string>> = { ...STRINGS, ...MORE };
+
 const STORAGE_KEY = 'brood.lang';
 let override: Lang | null = null;
 let hostLocale: string | undefined;
 
 try {
   const saved = window.localStorage.getItem(STORAGE_KEY);
-  if (saved === 'en' || saved === 'zh') override = saved;
+  if (LANGUAGES.some(entry => entry.code === saved)) override = saved as Lang;
 } catch {
   /* storage may be blocked in a sandboxed iframe */
 }
 
-const fromLocale = (locale: string | undefined): Lang => (locale?.toLowerCase().startsWith('zh') ? 'zh' : 'en');
+const fromLocale = (locale: string | undefined): Lang => {
+  const prefix = locale?.toLowerCase().slice(0, 2);
+  return LANGUAGES.find(entry => entry.code === prefix)?.code ?? 'en';
+};
 
 export function lang(): Lang {
   return override ?? fromLocale(hostLocale ?? navigator.language);
@@ -196,8 +215,8 @@ export function setHostLocale(locale: string | undefined): boolean {
   return lang() !== before;
 }
 
-export function toggleLang(): void {
-  override = lang() === 'en' ? 'zh' : 'en';
+export function setLang(next: Lang): void {
+  override = next;
   try {
     window.localStorage.setItem(STORAGE_KEY, override);
   } catch {
@@ -206,7 +225,8 @@ export function toggleLang(): void {
 }
 
 export function t(key: Key, params?: Record<string, string | number>): string {
-  let text: string = STRINGS[lang()][key];
+  const current = lang();
+  let text: string = current === 'en' || current === 'zh' ? STRINGS[current][key] : MORE[current][key];
   if (params) for (const [name, value] of Object.entries(params)) text = text.replace(`{${name}}`, String(value));
   return text;
 }
@@ -216,7 +236,7 @@ export const sizeName = (size: number) => t(`size${size}` as Key);
 
 /** Applies the static strings marked up in index.html. */
 export function applyStaticStrings(): void {
-  document.documentElement.lang = lang() === 'zh' ? 'zh-CN' : 'en';
+  document.documentElement.lang = LANGUAGES.find(entry => entry.code === lang())!.html;
   document.querySelectorAll<HTMLElement>('[data-i18n]').forEach(node => {
     node.textContent = t(node.dataset.i18n as Key);
   });

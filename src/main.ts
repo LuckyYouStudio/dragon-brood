@@ -8,7 +8,7 @@ import { BoardView } from './boardview';
 import { SparkLayer } from './fx';
 import { Dragon } from './dragon';
 import { connectHost, type HostLink } from './host';
-import { applyStaticStrings, lang, rankName, setHostLocale, sizeName, t, toggleLang } from './i18n';
+import { LANGUAGES, applyStaticStrings, lang, rankName, setHostLocale, setLang, sizeName, t, type Lang } from './i18n';
 import { NestView } from './nest';
 import {
   CRACK_HEAT,
@@ -40,7 +40,7 @@ const el = {
   badge: $('mode-badge'),
   balance: $('balance'),
   sound: $<HTMLButtonElement>('btn-sound'),
-  lang: $<HTMLButtonElement>('btn-lang'),
+  lang: $<HTMLSelectElement>('btn-lang'),
   auto: $<HTMLButtonElement>('btn-auto'),
   infoBtn: $<HTMLButtonElement>('btn-info'),
   info: $<HTMLDialogElement>('info'),
@@ -817,17 +817,21 @@ function infoHtml(): string {
 
 function renderLanguage(): void {
   applyStaticStrings();
-  el.lang.textContent = t('language');
+  if (!el.lang.options.length) {
+    for (const entry of LANGUAGES) el.lang.add(new Option(entry.name, entry.code));
+  }
+  el.lang.value = lang();
+  el.lang.setAttribute('aria-label', t('language'));
   el.auto.title = t('autoHint');
-  document.title = lang() === 'zh' ? '龙巢 Dragon Brood — 三消养蛋，付费开蛋' : 'Dragon Brood — match the clutch, crack the egg';
+  document.title = lang() === 'zh' ? '龙巢 Dragon Brood — 三消养蛋，付费开蛋' : `Dragon Brood — ${t('cta')}`;
   el.sizes.replaceChildren();
   if (el.info.open) el.infoBody.innerHTML = infoHtml();
   if (coachStep > 0) placeCoach();
 }
-el.lang.addEventListener('click', () => {
+el.lang.addEventListener('change', () => {
   unlock();
   sfx.select();
-  toggleLang();
+  setLang(el.lang.value as Lang);
   error = null;
   renderLanguage();
   render();

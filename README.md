@@ -71,3 +71,6 @@ Against the SDK's local simulator: drop `contracts/DragonBroodGame.sol` into the
 - `cancelStuckRandomness` is offered if the chain stays silent.
 - Standalone (or framed by a non-casino page) it falls back to a demo with play credits and the
   same paytable. Respects `prefers-reduced-motion`.
+- Seven languages — English, Deutsch, Español, Русский, Português, Tiếng Việt, 中文 — following
+  `snapshot.ui.locale` inside the host and the browser when standalone, with a picker to override.
+  A test checks every dictionary covers every key with the same placeholders.
