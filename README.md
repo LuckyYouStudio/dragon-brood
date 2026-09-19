@@ -39,6 +39,7 @@ src/host.ts                     bridge connection + standalone demo fallback
 src/main.ts                     round lifecycle, snapshot handling, HUD
 src/board.ts, boardview.ts      match-3 rules and canvas view
 src/nest.ts, art.ts, fx.ts      the egg, the hatch, the sparks — all drawn in code
+src/dragon.ts                   the five hatchlings: one parametric rig (neck, skull, jaw, horns, wings, breath)
 src/audio.ts                    every sound is synthesized with WebAudio
 math/paytable.py                exact RTP + variance proof
 ```

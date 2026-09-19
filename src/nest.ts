@@ -10,7 +10,7 @@ type Phase = 'idle' | 'cracking' | 'hatched';
 const SIZE_SCALE = [0, 0.52, 0.64, 0.76, 0.88, 1];
 const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 
-/** The egg in the nest: grows with size, cracks while the chain rolls, hatches an eye. */
+/** The egg in the nest: grows with size, cracks while the chain rolls, then bursts open. */
 export class NestView {
   private ctx: CanvasRenderingContext2D;
   private w = 0;
@@ -101,7 +101,7 @@ export class NestView {
   }
 
   /** Bursts the shell and reveals the hatchling. Resolves when the presentation lands. */
-  hatch(rank: number): Promise<void> {
+  hatch(rank: number, onBurst: () => void = () => {}): Promise<void> {
     sfx.rumbleStop();
     this.rank = rank;
     this.crackTarget = 1;
@@ -116,6 +116,7 @@ export class NestView {
         this.flash = 1;
         this.spawnShards();
         sfx.burst();
+        onBurst();
         if (rank === 0) {
           sfx.dud();
           this.burstMotes(26, '#777b84', true);
@@ -126,6 +127,30 @@ export class NestView {
         window.setTimeout(resolve, reducedMotion ? 300 : 900 + rank * 160);
       }, burstDelay);
     });
+  }
+
+  /** The jagged rim of the broken shell in client space — the dragon rises from behind it. */
+  hatchEdge(): { points: Point[]; eh: number; ew: number; top: number } {
+    const rect = this.canvas.getBoundingClientRect();
+    const { ew, eh, cx, cy } = this.eggDims();
+    return {
+      points: this.rimPoints(ew, eh).map(p => ({ x: rect.left + cx + p.x, y: rect.top + cy + p.y })),
+      eh,
+      ew,
+      top: Math.max(0, rect.top - Math.min(40, rect.height * 0.1)), // may rise a little past the panel, never over the page top
+    };
+  }
+
+  private rimPoints(ew: number, eh: number): Point[] {
+    const teeth = 9;
+    const points: Point[] = [];
+    for (let i = 0; i <= teeth; i++) {
+      points.push({
+        x: -ew / 2 + (i / teeth) * ew,
+        y: eh * (i % 2 ? -0.04 : 0.12) + Math.sin(i * 2.3) * eh * 0.03,
+      });
+    }
+    return points;
   }
 
   reset(): void {
@@ -364,14 +389,9 @@ export class NestView {
     if (lowerOnly) {
       // keep only the jagged bottom half of the shell
       ctx.beginPath();
-      const teeth = 9;
       ctx.moveTo(-ew, eh);
       ctx.lineTo(-ew, eh * 0.08);
-      for (let i = 0; i <= teeth; i++) {
-        const x = -ew / 2 + (i / teeth) * ew;
-        const y = eh * (i % 2 ? -0.04 : 0.12) + Math.sin(i * 2.3) * eh * 0.03;
-        ctx.lineTo(x, y);
-      }
+      for (const p of this.rimPoints(ew, eh)) ctx.lineTo(p.x, p.y);
       ctx.lineTo(ew, eh * 0.08);
       ctx.lineTo(ew, eh);
       ctx.closePath();
@@ -460,7 +480,7 @@ export class NestView {
     ctx.restore();
   }
 
-  /** What hatched: a dragon eye opening in the dark of the shell — or, for a dud, cold ash. */
+  /** Inside the broken shell: a glowing hollow the dragon climbs out of — or, for a dud, cold ash. */
   private drawHatchling(ew: number, eh: number): void {
     const ctx = this.ctx;
     const rank = this.rank;
@@ -482,9 +502,6 @@ export class NestView {
     }
 
     const color = RANK_COLOR[rank];
-    const eyeW = ew * (0.36 + rank * 0.085) * open;
-    const eyeH = eyeW * 0.52 * (0.85 + 0.15 * Math.sin(this.t * 1.3));
-
     ctx.save();
     ctx.translate(0, y);
     // rays for the rare ones
@@ -507,58 +524,15 @@ export class NestView {
       }
       ctx.restore();
     }
-    // dark head mass behind the eye
-    const head = ctx.createRadialGradient(0, eh * 0.1, 0, 0, eh * 0.1, eh * 0.46);
-    head.addColorStop(0, 'rgba(12,10,14,0.98)');
-    head.addColorStop(0.75, 'rgba(12,10,14,0.9)');
-    head.addColorStop(1, 'rgba(12,10,14,0)');
-    ctx.fillStyle = head;
+    // the hollow of the shell, lit from inside by whatever is climbing out of it
+    const hollow = ctx.createRadialGradient(0, eh * 0.14, 0, 0, eh * 0.14, ew * 0.55);
+    hollow.addColorStop(0, hexA(lighten(color, 0.3), 0.85 * open));
+    hollow.addColorStop(0.45, hexA(darken(color, 0.6), 0.9));
+    hollow.addColorStop(1, 'rgba(8,5,10,0)');
+    ctx.fillStyle = hollow;
     ctx.beginPath();
-    ctx.ellipse(0, eh * 0.12, ew * 0.5, eh * 0.4, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, eh * 0.16, ew * 0.5, eh * 0.2, 0, 0, Math.PI * 2);
     ctx.fill();
-
-    // almond eye
-    ctx.beginPath();
-    ctx.moveTo(-eyeW, 0);
-    ctx.quadraticCurveTo(0, -eyeH * 1.5, eyeW, 0);
-    ctx.quadraticCurveTo(0, eyeH * 1.5, -eyeW, 0);
-    ctx.closePath();
-    ctx.save();
-    ctx.shadowColor = color;
-    ctx.shadowBlur = eh * 0.14;
-    const iris = ctx.createRadialGradient(0, 0, eyeH * 0.1, 0, 0, eyeW);
-    iris.addColorStop(0, lighten(color, 0.65));
-    iris.addColorStop(0.35, color);
-    iris.addColorStop(1, darken(color, 0.7));
-    ctx.fillStyle = iris;
-    ctx.fill();
-    ctx.restore();
-    ctx.save();
-    ctx.clip();
-    // iris fibres
-    ctx.strokeStyle = hexA(darken(color, 0.5), 0.5);
-    ctx.lineWidth = Math.max(1, eh * 0.004);
-    for (let i = 0; i < 36; i++) {
-      const a = (i / 36) * Math.PI * 2;
-      ctx.beginPath();
-      ctx.moveTo(Math.cos(a) * eyeH * 0.25, Math.sin(a) * eyeH * 0.25);
-      ctx.lineTo(Math.cos(a) * eyeW, Math.sin(a) * eyeW);
-      ctx.stroke();
-    }
-    // slit pupil narrows as the eye adjusts to the light
-    const slit = eyeH * (0.34 - 0.2 * Math.min(1, this.hatchT / 1.2));
-    ctx.fillStyle = '#050307';
-    ctx.beginPath();
-    ctx.ellipse(0, 0, Math.max(eyeH * 0.07, slit), eyeH * 0.95, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.85)';
-    ctx.beginPath();
-    ctx.ellipse(-eyeW * 0.22, -eyeH * 0.3, eyeW * 0.07, eyeH * 0.12, -0.5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-    ctx.strokeStyle = 'rgba(0,0,0,0.85)';
-    ctx.lineWidth = eh * 0.012;
-    ctx.stroke();
     ctx.restore();
   }
 }

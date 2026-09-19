@@ -171,6 +171,43 @@ export const sfx = {
     tone({ type: 'sawtooth', freq: SCALE[0] / 2, dur: seconds, gain: 0.05, attack: 0.3 });
     noise(0, 0.5, 0.2, 5000, 'highpass');
   },
+  /** Whelps squeak, Ancients shake the room. */
+  roar(rank: number, seconds: number): void {
+    if (!ctx || !master) return;
+    if (rank === 1) {
+      tone({ type: 'triangle', freq: 900, to: 1500, dur: 0.12, gain: 0.12 });
+      tone({ type: 'triangle', freq: 1400, to: 1000, dur: 0.18, gain: 0.1, at: 0.12 });
+      return;
+    }
+    const base = [0, 0, 190, 140, 95, 62][rank];
+    const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const vibrato = ctx.createOscillator();
+    const vibratoGain = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+    const gain = ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(base * 0.8, t);
+    osc.frequency.linearRampToValueAtTime(base * 1.35, t + seconds * 0.3);
+    osc.frequency.linearRampToValueAtTime(base * 0.7, t + seconds);
+    vibrato.frequency.value = 23;
+    vibratoGain.gain.value = base * 0.18;
+    vibrato.connect(vibratoGain).connect(osc.frequency);
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(500, t);
+    filter.frequency.linearRampToValueAtTime(1800, t + seconds * 0.35);
+    filter.frequency.linearRampToValueAtTime(400, t + seconds);
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(0.16 + rank * 0.035, t + 0.08);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + seconds + 0.15);
+    osc.connect(filter).connect(gain).connect(master);
+    osc.start(t);
+    vibrato.start(t);
+    osc.stop(t + seconds + 0.2);
+    vibrato.stop(t + seconds + 0.2);
+    noise(0, seconds, 0.12 + rank * 0.03, 700 + rank * 120, 'bandpass', 0.7);
+    if (rank >= 4) noise(0.1, seconds * 0.9, 0.18, 2600, 'highpass'); // the hiss of the flame
+  },
   coach(): void {
     tone({ type: 'sine', freq: 880, dur: 0.12, gain: 0.06 });
     tone({ type: 'sine', freq: 1320, dur: 0.18, gain: 0.05, at: 0.08 });

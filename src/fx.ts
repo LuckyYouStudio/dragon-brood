@@ -1,4 +1,5 @@
 import { ELEMENTS } from './art';
+import type { Dragon, HatchEdge } from './dragon';
 
 type Spark = {
   sx: number; sy: number; cx: number; cy: number; tx: number; ty: number;
@@ -12,6 +13,8 @@ export class SparkLayer {
   private ctx: CanvasRenderingContext2D;
   private sparks: Spark[] = [];
   private flakes: Flake[] = [];
+  private dragon: Dragon | null = null;
+  private edge: (() => HatchEdge) | null = null;
   private rain = { left: 0, rate: 0, carry: 0, colors: ['#ffd24a'] };
   private w = 0;
   private h = 0;
@@ -51,6 +54,16 @@ export class SparkLayer {
     });
   }
 
+  /** The hatchling is drawn here, over the whole game, so its wings can leave the nest panel. */
+  setDragon(dragon: Dragon, edge: () => HatchEdge): void {
+    this.dragon = dragon;
+    this.edge = edge;
+  }
+
+  dismissDragon(): void {
+    this.dragon?.leave();
+  }
+
   /** A shower of gold scales over the whole game, for the hatches worth shouting about. */
   celebrate(seconds: number, rate: number, color: string): void {
     this.rain = { left: seconds, rate, carry: 0, colors: ['#ffd24a', '#fff1b8', '#f09a2a', color] };
@@ -78,6 +91,10 @@ export class SparkLayer {
   }
 
   update(dt: number): void {
+    if (this.dragon) {
+      this.dragon.update(dt);
+      if (this.dragon.dead) this.dragon = null;
+    }
     if (this.rain.left > 0) {
       this.rain.left -= dt;
       this.rain.carry += this.rain.rate * dt;
@@ -107,6 +124,16 @@ export class SparkLayer {
   draw(): void {
     const ctx = this.ctx;
     ctx.clearRect(0, 0, this.w, this.h);
+    if (this.dragon && this.edge) {
+      // the nest reports its broken shell edge in client space; bring it into this layer
+      const rect = this.canvas.getBoundingClientRect();
+      const edge = this.edge();
+      this.dragon.draw(ctx, {
+        ...edge,
+        top: edge.top - rect.top,
+        points: edge.points.map(p => ({ x: p.x - rect.left, y: p.y - rect.top })),
+      });
+    }
     for (const flake of this.flakes) {
       ctx.save();
       ctx.translate(flake.x, flake.y);

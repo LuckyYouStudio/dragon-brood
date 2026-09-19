@@ -82,13 +82,13 @@ button:disabled { cursor: not-allowed; }
 .nest { position: relative; padding: 8px 12px 12px; overflow: hidden; }
 #nest-canvas { display: block; width: 100%; height: 250px; }
 .result {
-  position: absolute; left: 0; right: 0; top: 10px; text-align: center; pointer-events: none;
+  position: absolute; left: 0; right: 0; top: 158px; z-index: 6; text-align: center; pointer-events: none;
   opacity: 0; transform: translateY(8px) scale(0.96); transition: opacity 0.25s, transform 0.35s cubic-bezier(.2,1.4,.4,1);
 }
 .result.show { opacity: 1; transform: none; }
-.result__rank { font-family: var(--display); font-weight: 900; letter-spacing: 0.14em; text-transform: uppercase; font-size: 15px; }
-.result__mult { font-family: var(--display); font-weight: 900; font-size: 44px; line-height: 1; text-shadow: 0 2px 0 #000, 0 0 24px currentColor; }
-.result__pay { font-weight: 700; font-variant-numeric: tabular-nums; font-size: 15px; margin-top: 2px; color: var(--ink); }
+.result__rank { font-family: var(--display); font-weight: 900; letter-spacing: 0.14em; text-transform: uppercase; font-size: 15px; text-shadow: 0 1px 0 #000, 0 0 8px #000; }
+.result__mult { font-family: var(--display); font-weight: 900; font-size: 40px; line-height: 1; text-shadow: 0 2px 0 #000, 0 0 6px #000, 0 0 24px currentColor; }
+.result__pay { font-weight: 700; font-variant-numeric: tabular-nums; font-size: 15px; margin-top: 2px; color: var(--ink); text-shadow: 0 1px 0 #000, 0 0 8px #000; }
 .result--dud .result__mult { font-size: 28px; color: #8b8f98; text-shadow: 0 2px 0 #000; }
 
 .sizes { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }

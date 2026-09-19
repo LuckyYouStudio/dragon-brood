@@ -6,6 +6,7 @@ import { RANK_COLOR, SIZE_PALETTE } from './art';
 import { isMuted, setMuted, sfx, unlock } from './audio';
 import { BoardView } from './boardview';
 import { SparkLayer } from './fx';
+import { Dragon } from './dragon';
 import { connectHost, type HostLink } from './host';
 import { applyStaticStrings, lang, rankName, setHostLocale, sizeName, t, toggleLang } from './i18n';
 import { NestView } from './nest';
@@ -399,6 +400,7 @@ function finishRound(): void {
   el.bigwin.classList.remove('show');
   el.shell.classList.remove('quake');
   sparks.stopCelebration();
+  sparks.dismissDragon();
   nest.reset();
   const unlocked = maxUnlocked();
   chooseSize(pinned !== null ? Math.min(pinned, unlocked) : unlocked, false);
@@ -409,7 +411,9 @@ async function present(rank: Rank, multX100: number, payout: bigint): Promise<vo
   const current = round;
   current.status = 'hatching';
   render();
-  await nest.hatch(rank);
+  await nest.hatch(rank, () => {
+    if (rank > 0) sparks.setDragon(new Dragon(rank, onDragonRoar), () => nest.hatchEdge());
+  });
   hitRank = rank;
   // A cold shell keeps the nest warm: part of the egg's heat comes back.
   const heatRefund = rank === 0 ? Math.floor(SIZE_HEAT[current.size] * DUD_HEAT_REFUND) : 0;
@@ -428,6 +432,15 @@ async function present(rank: Rank, multX100: number, payout: bigint): Promise<vo
   current.status = 'done';
   render();
   resetTimer = window.setTimeout(finishRound, hold || (rank === 0 ? 1500 : 2200 + rank * 250));
+}
+
+function onDragonRoar(rank: number, seconds: number, first: boolean): void {
+  sfx.roar(rank, seconds);
+  if (rank >= 4 && first && !(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false)) {
+    el.shell.classList.remove('quake');
+    void el.shell.offsetWidth; // restart the animation
+    el.shell.classList.add('quake');
+  }
 }
 
 /** 0 = ordinary, 1 = a flourish, 2 = big hatch banner, 3 = the legendary treatment. */
