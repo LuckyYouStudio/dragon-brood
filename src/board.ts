@@ -107,6 +107,11 @@ export function collapse(grid: Grid): Drop[] {
   return drops;
 }
 
+/** Heat one clear is worth: every egg counts once per chain step, long lines earn a bonus. */
+export function heatFor(count: number, combo: number): number {
+  return count * combo + (count >= 5 ? 5 : count === 4 ? 2 : 0);
+}
+
 export function adjacent(a: Cell, b: Cell): boolean {
   return Math.abs(a.c - b.c) + Math.abs(a.r - b.r) === 1;
 }

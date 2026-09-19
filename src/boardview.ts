@@ -7,6 +7,7 @@ import {
   collapse,
   findMatches,
   findMove,
+  heatFor,
   newGrid,
   swapCells,
   type Cell,
@@ -26,7 +27,9 @@ type Piece = {
   wiggle: number;
 };
 
-export type ClearEvent = { cells: Array<{ x: number; y: number; color: number }>; combo: number; count: number };
+export type ClearEvent = { cells: Array<{ x: number; y: number; color: number }>; combo: number; count: number; heat: number };
+
+type Popup = { x: number; y: number; text: string; color: string; age: number; big: boolean };
 
 const CLEAR_TIME = 0.22;
 const wait = (ms: number) => new Promise<void>(resolve => window.setTimeout(resolve, ms));
@@ -45,6 +48,7 @@ export class BoardView {
   private hintShown = false;
   private settleWaiters: Array<() => void> = [];
   private t = 0;
+  private popups: Popup[] = [];
 
   onClear: (event: ClearEvent) => void = () => {};
 
@@ -199,7 +203,12 @@ export class BoardView {
         };
       });
       sfx.match(combo, matches.length);
-      this.onClear({ cells, combo, count: matches.length });
+      const heat = heatFor(matches.length, combo);
+      const cx = matches.reduce((sum, cell) => sum + cell.c, 0) / matches.length + 0.5;
+      const cy = matches.reduce((sum, cell) => sum + cell.r, 0) / matches.length + 0.5;
+      this.popups.push({ x: cx, y: cy, text: `+${heat}`, color: ELEMENTS[cells[0].color].light, age: 0, big: false });
+      if (combo >= 2) this.popups.push({ x: cx, y: cy - 0.55, text: `×${combo}`, color: '#ffd24a', age: 0, big: true });
+      this.onClear({ cells, combo, count: matches.length, heat });
       await wait(CLEAR_TIME * 1000);
       this.pieces = this.pieces.filter(p => p.clearing === 0);
 
@@ -238,6 +247,18 @@ export class BoardView {
     return new Promise(resolve => this.settleWaiters.push(resolve));
   }
 
+  /** Wiggles one available move right away (the first-run coach asks for it). */
+  showHint(): void {
+    if (this.busy || this.hintShown) return;
+    const move = findMove(this.grid);
+    if (!move) return;
+    this.hintShown = true;
+    for (const cell of move) {
+      const piece = this.pieceAt(cell);
+      if (piece) piece.wiggle = 1;
+    }
+  }
+
   private clearHint(): void {
     if (!this.hintShown) return;
     this.hintShown = false;
@@ -270,6 +291,8 @@ export class BoardView {
         if (piece.falling) moving = true;
       }
     }
+    for (const popup of this.popups) popup.age += dt;
+    this.popups = this.popups.filter(popup => popup.age < 0.9);
     if (landed) sfx.land();
     if (!moving && this.settleWaiters.length) {
       const waiters = this.settleWaiters;
@@ -335,6 +358,25 @@ export class BoardView {
       ctx.drawImage(sprite, -s / 2, -s / 2, s, s);
       ctx.restore();
     }
+
+    // heat numbers and chain multipliers float up off the clear
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (const popup of this.popups) {
+      const k = popup.age / 0.9;
+      const pop = Math.min(1, popup.age / 0.12);
+      const size = cell * (popup.big ? 0.62 : 0.42) * (0.6 + 0.4 * pop);
+      ctx.globalAlpha = k < 0.6 ? 1 : 1 - (k - 0.6) / 0.4;
+      ctx.font = `900 ${size}px system-ui, sans-serif`;
+      ctx.lineWidth = Math.max(2, size * 0.16);
+      ctx.strokeStyle = 'rgba(8,4,12,0.9)';
+      ctx.fillStyle = popup.color;
+      const px = Math.min(this.sizePx - size, Math.max(size, popup.x * cell));
+      const py = Math.max(size * 0.6, popup.y * cell - k * cell * 0.7);
+      ctx.strokeText(popup.text, px, py);
+      ctx.fillText(popup.text, px, py);
+    }
+    ctx.globalAlpha = 1;
   }
 }
 

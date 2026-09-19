@@ -5,10 +5,14 @@ type Spark = {
   t: number; dur: number; delay: number; color: string; done: () => void;
 };
 
+type Flake = { x: number; y: number; vx: number; vy: number; rot: number; vr: number; w: number; h: number; color: string; sway: number };
+
 /** Heat sparks that fly from cleared eggs to the nest, drawn over the whole shell. */
 export class SparkLayer {
   private ctx: CanvasRenderingContext2D;
   private sparks: Spark[] = [];
+  private flakes: Flake[] = [];
+  private rain = { left: 0, rate: 0, carry: 0, colors: ['#ffd24a'] };
   private w = 0;
   private h = 0;
 
@@ -47,7 +51,48 @@ export class SparkLayer {
     });
   }
 
+  /** A shower of gold scales over the whole game, for the hatches worth shouting about. */
+  celebrate(seconds: number, rate: number, color: string): void {
+    this.rain = { left: seconds, rate, carry: 0, colors: ['#ffd24a', '#fff1b8', '#f09a2a', color] };
+    for (let i = 0; i < rate * 0.4; i++) this.spawnFlake(Math.random() * this.h * 0.5);
+  }
+
+  stopCelebration(): void {
+    this.rain.left = 0;
+  }
+
+  private spawnFlake(y = -20): void {
+    const size = 6 + Math.random() * 9;
+    this.flakes.push({
+      x: Math.random() * this.w,
+      y,
+      vx: (Math.random() - 0.5) * 60,
+      vy: 140 + Math.random() * 220,
+      rot: Math.random() * 6,
+      vr: (Math.random() - 0.5) * 9,
+      w: size,
+      h: size * (0.55 + Math.random() * 0.4),
+      color: this.rain.colors[Math.floor(Math.random() * this.rain.colors.length)],
+      sway: Math.random() * 6,
+    });
+  }
+
   update(dt: number): void {
+    if (this.rain.left > 0) {
+      this.rain.left -= dt;
+      this.rain.carry += this.rain.rate * dt;
+      while (this.rain.carry >= 1) {
+        this.rain.carry -= 1;
+        this.spawnFlake();
+      }
+    }
+    for (const flake of this.flakes) {
+      flake.sway += dt * 3;
+      flake.x += (flake.vx + Math.sin(flake.sway) * 40) * dt;
+      flake.y += flake.vy * dt;
+      flake.rot += flake.vr * dt;
+    }
+    this.flakes = this.flakes.filter(flake => flake.y < this.h + 30);
     for (const spark of this.sparks) {
       if (spark.delay > 0) {
         spark.delay -= dt;
@@ -62,6 +107,19 @@ export class SparkLayer {
   draw(): void {
     const ctx = this.ctx;
     ctx.clearRect(0, 0, this.w, this.h);
+    for (const flake of this.flakes) {
+      ctx.save();
+      ctx.translate(flake.x, flake.y);
+      ctx.rotate(flake.rot);
+      ctx.scale(1, Math.cos(flake.sway * 1.7)); // tumbling
+      ctx.fillStyle = flake.color;
+      ctx.beginPath();
+      ctx.moveTo(0, -flake.h);
+      ctx.quadraticCurveTo(flake.w, -flake.h * 0.2, 0, flake.h);
+      ctx.quadraticCurveTo(-flake.w, -flake.h * 0.2, 0, -flake.h);
+      ctx.fill();
+      ctx.restore();
+    }
     ctx.globalCompositeOperation = 'lighter';
     for (const spark of this.sparks) {
       if (spark.delay > 0) continue;

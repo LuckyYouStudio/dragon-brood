@@ -4,14 +4,15 @@ A casino game with a match-3 heart, built on the Chain.wtf Casino SDK for Chain 
 
 **Match dragon eggs → the egg in your nest grows → pay to crack it.**
 Matching is free. Cracking is the bet. A bigger egg holds bigger dragons and more cold shells.
+A cold shell gives half of the egg's heat back, so a dud never sends you back to zero.
 
 | Egg    | Heat | Whelp | Drake | Wyvern | Dragon | Ancient | Dud   | RTP |
 | ------ | ---: | ----: | ----: | -----: | -----: | ------: | ----: | --: |
 | Pebble | free |    1× |  1.5× |     2× |     3× |      5× | 38.0% | 96% |
 | Clutch |   30 |    1× |    2× |     5× |    10× |     25× | 54.4% | 96% |
-| Brood  |   80 |  1.5× |    4× |    10× |    25× |    100× | 73.3% | 96% |
-| Hoard  |  160 |    2× |    8× |    25× |   100× |    500× | 82.5% | 96% |
-| Elder  |  300 |    3× |   20× |   100× |   500× |   2500× | 89.6% | 96% |
+| Brood  |   70 |  1.5× |    4× |    10× |    25× |    100× | 73.3% | 96% |
+| Hoard  |  130 |    2× |    8× |    25× |   100× |    500× | 82.5% | 96% |
+| Elder  |  220 |    3× |   20× |   100× |   500× |   2500× | 89.6% | 96% |
 
 ## Why the match-3 cannot break the math
 

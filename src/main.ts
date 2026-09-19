@@ -10,6 +10,7 @@ import { connectHost, type HostLink } from './host';
 import { applyStaticStrings, lang, rankName, setHostLocale, sizeName, t, toggleLang } from './i18n';
 import { NestView } from './nest';
 import {
+  DUD_HEAT_REFUND,
   HEAT_CAP,
   MAX_SIZE,
   RTP,
@@ -55,6 +56,12 @@ const el = {
   cta: $<HTMLButtonElement>('cta'),
   reason: $('reason'),
   history: $('history'),
+  shell: $('app'),
+  bigwin: $('bigwin'),
+  coach: $('coach'),
+  coachStep: $('coach-step'),
+  coachText: $('coach-text'),
+  coachSkip: $<HTMLButtonElement>('coach-skip'),
 };
 
 const nest = new NestView($<HTMLCanvasElement>('nest-canvas'));
@@ -79,7 +86,11 @@ const DEMO_DECIMALS = 2;
 const DEMO_START = 100_000n; // 1,000.00 play credits
 
 let link: HostLink;
-let heat = loadNumber('brood.heat', 0);
+let heat = Math.min(HEAT_CAP, loadNumber('brood.heat', 0));
+if (import.meta.env.DEV) {
+  const forcedHeat = new URLSearchParams(location.search).get('heat'); // dev-only: ?heat=220
+  if (forcedHeat !== null) heat = Number(forcedHeat);
+}
 let size = 1;
 let pinned: number | null = null; // a smaller size the player chose on purpose
 let round: Round | null = null;
@@ -145,9 +156,8 @@ function addHeat(amount: number): void {
   else renderHeat();
 }
 
-board.onClear = ({ cells, combo, count }) => {
-  const bonus = count >= 5 ? 5 : count === 4 ? 2 : 0;
-  const total = count * combo + bonus;
+board.onClear = ({ cells, heat: total }) => {
+  coachOnClear();
   const target = nest.center();
   const share = Math.floor(total / cells.length);
   cells.forEach((cell, i) => {
@@ -332,6 +342,18 @@ function renderHistory(): void {
         : `<span class="chip" style="--c:${RANK_COLOR[entry.rank]}">${formatMult(entry.multX100)}</span>`,
     )
     .join('');
+  fitHistory();
+}
+
+/** Only whole chips: whatever does not fit the row is dropped, never clipped. */
+function fitHistory(): void {
+  const width = el.history.clientWidth;
+  if (!width) return;
+  [...el.history.children].forEach(node => {
+    const chip = node as HTMLElement;
+    chip.hidden = false;
+    chip.hidden = chip.offsetLeft - el.history.offsetLeft + chip.offsetWidth > width;
+  });
 }
 
 function render(): void {
@@ -341,12 +363,13 @@ function render(): void {
   renderHistory();
 }
 
-function showResult(rank: Rank, multX100: number, wager: bigint, payout: bigint): void {
+function showResult(rank: Rank, multX100: number, wager: bigint, payout: bigint, heatRefund: number): void {
   const dud = rank === 0;
   el.result.className = `result show${dud ? ' result--dud' : ''}`;
   el.result.style.color = RANK_COLOR[rank];
   if (dud) {
-    el.result.innerHTML = `<div class="result__mult">${t('coldShell')}</div><div class="result__pay">${t('nothing')}</div>`;
+    const back = heatRefund > 0 ? `<div class="result__heat">${t('heatBack', { n: heatRefund })}</div>` : '';
+    el.result.innerHTML = `<div class="result__mult">${t('coldShell')}</div><div class="result__pay">${t('nothing')}</div>${back}`;
     return;
   }
   el.result.innerHTML = `<div class="result__rank">${rankName(rank)}</div><div class="result__mult">${formatMult(multX100)}</div><div class="result__pay"></div>`;
@@ -373,6 +396,9 @@ function finishRound(): void {
   round = null;
   hitRank = null;
   el.result.classList.remove('show');
+  el.bigwin.classList.remove('show');
+  el.shell.classList.remove('quake');
+  sparks.stopCelebration();
   nest.reset();
   const unlocked = maxUnlocked();
   chooseSize(pinned !== null ? Math.min(pinned, unlocked) : unlocked, false);
@@ -385,7 +411,12 @@ async function present(rank: Rank, multX100: number, payout: bigint): Promise<vo
   render();
   await nest.hatch(rank);
   hitRank = rank;
-  showResult(rank, multX100, current.wager, payout);
+  // A cold shell keeps the nest warm: part of the egg's heat comes back.
+  const heatRefund = rank === 0 ? Math.floor(SIZE_HEAT[current.size] * DUD_HEAT_REFUND) : 0;
+  if (heatRefund > 0) addHeat(heatRefund);
+  showResult(rank, multX100, current.wager, payout, heatRefund);
+  const level = celebrationLevel(rank, multX100);
+  const hold = celebrate(level, rank, multX100, payout);
   if (current.sessionId && link.api) {
     // Required guest step: the host withholds the payout from its balance displays until now.
     void link.api.revealOutcome({ sessionId: current.sessionId }).catch(() => {});
@@ -396,11 +427,59 @@ async function present(rank: Rank, multX100: number, payout: bigint): Promise<vo
   }
   current.status = 'done';
   render();
-  resetTimer = window.setTimeout(finishRound, rank === 0 ? 1400 : 2400 + rank * 300);
+  resetTimer = window.setTimeout(finishRound, hold || (rank === 0 ? 1500 : 2200 + rank * 250));
 }
+
+/** 0 = ordinary, 1 = a flourish, 2 = big hatch banner, 3 = the legendary treatment. */
+function celebrationLevel(rank: Rank, multX100: number): number {
+  if (multX100 >= 10_000) return 3;
+  if (multX100 >= 2_000) return 2;
+  if (multX100 >= 500 || rank >= 4) return 1;
+  return 0;
+}
+
+/** Returns how long the round should hold before the nest resets (0 = default). */
+function celebrate(level: number, rank: Rank, multX100: number, payout: bigint): number {
+  if (level === 0) return 0;
+  const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+  if (level === 1) {
+    if (!reduced) sparks.celebrate(1.2, 70, RANK_COLOR[rank]);
+    return 0;
+  }
+  const seconds = level === 3 ? 7 : 4;
+  if (!reduced) {
+    sparks.celebrate(seconds - 0.8, level === 3 ? 170 : 100, RANK_COLOR[rank]);
+    if (level === 3) el.shell.classList.add('quake');
+  }
+  sfx.jackpot(seconds - 1);
+  el.bigwin.style.setProperty('--c', RANK_COLOR[rank]);
+  el.bigwin.innerHTML = `<div class="bigwin__title">${t(level === 3 ? 'bigWin3' : 'bigWin2')}</div>
+    <div class="bigwin__rank">${rankName(rank)}</div>
+    <div class="bigwin__mult">${formatMult(multX100)}</div>
+    <div class="bigwin__pay"></div>
+    <div class="bigwin__hint">${t('tapToContinue')}</div>`;
+  el.bigwin.classList.add('show');
+  const pay = el.bigwin.querySelector('.bigwin__pay') as HTMLElement;
+  const start = performance.now();
+  const duration = (seconds - 1.5) * 1000;
+  const tick = () => {
+    if (!el.bigwin.classList.contains('show')) return;
+    const k = Math.min(1, (performance.now() - start) / duration);
+    const shown = (payout * BigInt(Math.round((1 - (1 - k) ** 3) * 10_000))) / 10_000n;
+    pay.textContent = `+${formatAmount(shown, decimals())} ${symbol()}`;
+    if (k < 1) {
+      if (Math.random() < 0.4) sfx.count();
+      requestAnimationFrame(tick);
+    }
+  };
+  tick();
+  return seconds * 1000;
+}
+el.bigwin.addEventListener('click', finishRound);
 
 async function crack(): Promise<void> {
   unlock();
+  coachDone();
   finishRound();
   const wager = parseAmount(el.wager.value, decimals());
   if (!wager || inFlight()) return;
@@ -423,7 +502,7 @@ async function crack(): Promise<void> {
       const forced = import.meta.env.DEV ? new URLSearchParams(location.search).get('rank') : null;
       if (forced !== null) outcome = rows(bet.size).find(row => row.rank === Number(forced)) ?? { rank: 0, multX100: 0 };
       void present(outcome.rank, outcome.multX100, payoutFor(wager, outcome.multX100));
-    }, 1500 + Math.random() * 700);
+    }, 1100 + Math.random() * 500);
     return;
   }
 
@@ -584,6 +663,7 @@ function renderLanguage(): void {
   document.title = lang() === 'zh' ? '龙巢 Dragon Brood — 三消养蛋，付费开蛋' : 'Dragon Brood — match the clutch, crack the egg';
   el.sizes.replaceChildren();
   if (el.info.open) el.infoBody.innerHTML = infoHtml();
+  if (coachStep > 0) placeCoach();
 }
 el.lang.addEventListener('click', () => {
   unlock();
@@ -594,12 +674,81 @@ el.lang.addEventListener('click', () => {
   render();
 });
 
+// ------------------------------------------------------------------ first-run coach
+
+let coachStep = 0; // 0 = off
+let coachTimer = 0;
+
+function coachSeen(): boolean {
+  try {
+    return window.localStorage.getItem('brood.coached') === '1';
+  } catch {
+    return false;
+  }
+}
+
+function coachTarget(): HTMLElement | null {
+  if (coachStep === 1) return $('board-canvas');
+  if (coachStep === 2) return $('nest-canvas');
+  if (coachStep === 3) return el.cta;
+  return null;
+}
+
+function placeCoach(): void {
+  document.querySelectorAll('.coach-target').forEach(node => node.classList.remove('coach-target'));
+  const target = coachTarget();
+  el.coach.hidden = !target;
+  if (!target) return;
+  target.classList.add('coach-target');
+  el.coachStep.textContent = String(coachStep);
+  el.coachText.textContent = t(`coach${coachStep}` as 'coach1');
+  el.coachSkip.textContent = t('coachSkip');
+  const shell = el.shell.getBoundingClientRect();
+  const rect = target.getBoundingClientRect();
+  const bubble = el.coach.getBoundingClientRect();
+  let left = rect.left - shell.left + rect.width / 2 - bubble.width / 2;
+  left = Math.max(8, Math.min(shell.width - bubble.width - 8, left));
+  // Over the board the bubble sits inside its top edge; elsewhere it floats just above the target.
+  let top = coachStep === 1 ? rect.top - shell.top + 10 : rect.top - shell.top - bubble.height - 10;
+  if (top < 4) top = rect.bottom - shell.top + 10;
+  el.coach.style.left = `${left}px`;
+  el.coach.style.top = `${top}px`;
+}
+
+function coachGo(step: number): void {
+  window.clearTimeout(coachTimer);
+  coachStep = step;
+  if (step > 0) sfx.coach();
+  placeCoach();
+  if (step === 1) board.showHint();
+  if (step === 2) coachTimer = window.setTimeout(() => coachGo(3), 5500);
+  if (step === 3) coachTimer = window.setTimeout(coachDone, 9000);
+}
+
+function coachOnClear(): void {
+  if (coachStep === 1) coachTimer = window.setTimeout(() => coachGo(2), 500);
+  else if (coachStep === 2) coachTimer = window.setTimeout(() => coachGo(3), 900);
+}
+
+function coachDone(): void {
+  if (coachStep === 0) return;
+  coachGo(0);
+  try {
+    window.localStorage.setItem('brood.coached', '1');
+  } catch {
+    /* ignore */
+  }
+}
+el.coachSkip.addEventListener('click', coachDone);
+
 function layout(): void {
   const avail = live() ? link.snapshot!.ui.viewport?.availableHeight : undefined;
   document.documentElement.style.setProperty('--avail', `${avail ?? window.innerHeight}px`);
   nest.resize();
   board.resize();
   sparks.resize();
+  fitHistory();
+  if (coachStep > 0) placeCoach();
 }
 new ResizeObserver(layout).observe($('app'));
 window.addEventListener('resize', layout);
@@ -618,6 +767,8 @@ renderSound();
 renderLanguage();
 layout();
 render();
+
+if (!coachSeen()) window.setTimeout(() => coachGo(1), 1600);
 
 let last = performance.now();
 function frame(now: number): void {

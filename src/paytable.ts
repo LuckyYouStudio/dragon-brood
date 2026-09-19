@@ -12,8 +12,10 @@ export const RANK_NAMES = ['Dud', 'Whelp', 'Drake', 'Wyvern', 'Dragon', 'Ancient
 export const SIZE_NAMES = ['', 'Pebble', 'Clutch', 'Brood', 'Hoard', 'Elder'] as const;
 
 /** Heat a nest must hold before an egg can grow to this size (index = size). */
-export const SIZE_HEAT = [0, 0, 30, 80, 160, 300] as const;
-export const HEAT_CAP = 600;
+export const SIZE_HEAT = [0, 0, 30, 70, 130, 220] as const;
+export const HEAT_CAP = 660;
+/** A cold shell keeps the nest warm: this share of the egg's heat comes back on a dud. */
+export const DUD_HEAT_REFUND = 0.5;
 
 export type Row = { rank: Rank; weight: number; multX100: number };
 

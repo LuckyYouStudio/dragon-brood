@@ -157,6 +157,24 @@ export const sfx = {
       noise(0.05, 1.6, 0.2, 260, 'lowpass');
     }
   },
+  /** The long fanfare under a big hatch: a climbing arpeggio that repeats for `seconds`. */
+  jackpot(seconds: number): void {
+    const pattern = [0, 2, 4, 5, 7, 5, 4, 2];
+    const step = 0.11;
+    const steps = Math.floor(seconds / step);
+    for (let i = 0; i < steps; i++) {
+      const octave = 1 + Math.floor(i / pattern.length) * 0.5;
+      const note = SCALE[pattern[i % pattern.length]] * Math.min(2, octave);
+      tone({ type: 'triangle', freq: note, dur: 0.22, gain: 0.1, at: i * step });
+      if (i % 4 === 0) tone({ type: 'sine', freq: note / 2, dur: 0.4, gain: 0.12, at: i * step });
+    }
+    tone({ type: 'sawtooth', freq: SCALE[0] / 2, dur: seconds, gain: 0.05, attack: 0.3 });
+    noise(0, 0.5, 0.2, 5000, 'highpass');
+  },
+  coach(): void {
+    tone({ type: 'sine', freq: 880, dur: 0.12, gain: 0.06 });
+    tone({ type: 'sine', freq: 1320, dur: 0.18, gain: 0.05, at: 0.08 });
+  },
   count(): void {
     tone({ type: 'square', freq: 1320, dur: 0.03, gain: 0.025 });
   },
