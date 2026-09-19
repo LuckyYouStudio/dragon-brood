@@ -102,6 +102,21 @@ let adoptChecked = false;
 let resetTimer = 0;
 let hitRank: Rank | null = null;
 
+/** The win on its way from the dragon's mouth to the balance, coin by coin. */
+type CoinShow = {
+  base: bigint; // balance before the payout
+  payout: bigint;
+  arrived: bigint;
+  coins: number;
+  landed: number;
+  started: boolean;
+  settled: boolean;
+  sessionId?: string;
+  holdUntil: number; // once settled, keep showing the full amount until the host's balance catches up
+};
+let coinShow: CoinShow | null = null;
+let lastCoinSound = 0;
+
 function loadNumber(key: string, fallback: number): number {
   try {
     const value = Number(window.localStorage.getItem(key));
@@ -137,6 +152,80 @@ function balance(): bigint | undefined {
   // Never let a settled win leak into the balance before the egg has hatched on screen.
   if (round?.balanceFloor !== undefined && inFlight() && value > round.balanceFloor) return round.balanceFloor;
   return value;
+}
+
+/** What the balance readout shows: the real balance, except while coins are still flying in. */
+function displayBalance(): bigint | undefined {
+  const actual = balance();
+  if (!coinShow) return actual;
+  if (!coinShow.settled) return coinShow.base + coinShow.arrived;
+  const full = coinShow.base + coinShow.payout;
+  if (actual === undefined || actual >= full || performance.now() > coinShow.holdUntil) {
+    coinShow = null;
+    return actual;
+  }
+  return full;
+}
+
+function renderBalance(): void {
+  const shown = displayBalance();
+  el.balance.textContent = shown === undefined ? '—' : `${formatAmount(shown, decimals())} ${symbol()}`;
+}
+
+function coinCountFor(multX100: number): number {
+  if (multX100 >= 10_000) return 44;
+  if (multX100 >= 2_000) return 30;
+  if (multX100 >= 500) return 20;
+  if (multX100 >= 200) return 13;
+  return 8;
+}
+
+/** First roar: the dragon spits the payout toward the balance. */
+function startCoins(seconds: number): void {
+  const show = coinShow;
+  if (!show || show.started || show.settled || show.payout === 0n) return;
+  show.started = true;
+  const share = show.payout / BigInt(show.coins);
+  sparks.spitCoins(
+    show.coins,
+    Math.max(0.5, seconds * 0.9),
+    () => {
+      const rect = el.balance.getBoundingClientRect();
+      return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    },
+    () => nest.center(),
+    () => {
+      if (coinShow !== show || show.settled) return;
+      show.landed++;
+      show.arrived = show.landed >= show.coins ? show.payout : show.arrived + share;
+      const now = performance.now();
+      if (now - lastCoinSound > 55) {
+        lastCoinSound = now;
+        sfx.coin();
+      }
+      el.balance.classList.remove('bump');
+      void el.balance.offsetWidth;
+      el.balance.classList.add('bump');
+      renderBalance();
+      if (show.landed >= show.coins) settleCoins();
+    },
+  );
+}
+
+/** Credits whatever has not landed yet and tells the host the presentation is over. Idempotent. */
+function settleCoins(): void {
+  const show = coinShow;
+  if (!show || show.settled) return;
+  show.settled = true;
+  show.arrived = show.payout;
+  show.holdUntil = performance.now() + 6000;
+  sparks.clearCoins();
+  if (show.sessionId && link.api) {
+    // Required guest step: the host withholds the payout from its balance displays until now.
+    void link.api.revealOutcome({ sessionId: show.sessionId }).catch(() => {});
+  }
+  window.setTimeout(() => el.balance.classList.remove('bump'), 400);
+  renderBalance();
 }
 
 // ------------------------------------------------------------------ heat + size
@@ -255,7 +344,7 @@ function renderBet(): void {
   el.badge.hidden = link.mode !== 'demo';
   el.symbol.textContent = symbol();
   const bal = balance();
-  el.balance.textContent = bal === undefined ? '—' : `${formatAmount(bal, decimals())} ${symbol()}`;
+  renderBalance();
 
   const wager = parseAmount(el.wager.value, decimals());
   const walletStatus = live() ? link.snapshot!.wallet.status : 'ready';
@@ -394,6 +483,7 @@ function showResult(rank: Rank, multX100: number, wager: bigint, payout: bigint,
 function finishRound(): void {
   window.clearTimeout(resetTimer);
   if (!round || round.status !== 'done') return;
+  settleCoins(); // a player who moves on early still gets every coin
   round = null;
   hitRank = null;
   el.result.classList.remove('show');
@@ -411,8 +501,22 @@ async function present(rank: Rank, multX100: number, payout: bigint): Promise<vo
   const current = round;
   current.status = 'hatching';
   render();
+  // Balance before the payout: the floor we have been showing since the bet left.
+  const base = link.mode === 'demo' ? demoBalance : (current.balanceFloor ?? balance() ?? 0n);
   await nest.hatch(rank, () => {
-    if (rank > 0) sparks.setDragon(new Dragon(rank, onDragonRoar), () => nest.hatchEdge());
+    if (rank === 0) return;
+    coinShow = {
+      base,
+      payout,
+      arrived: 0n,
+      coins: coinCountFor(multX100),
+      landed: 0,
+      started: false,
+      settled: false,
+      sessionId: current.sessionId,
+      holdUntil: 0,
+    };
+    sparks.setDragon(new Dragon(rank, onDragonRoar), () => nest.hatchEdge());
   });
   hitRank = rank;
   // A cold shell keeps the nest warm: part of the egg's heat comes back.
@@ -421,8 +525,8 @@ async function present(rank: Rank, multX100: number, payout: bigint): Promise<vo
   showResult(rank, multX100, current.wager, payout, heatRefund);
   const level = celebrationLevel(rank, multX100);
   const hold = celebrate(level, rank, multX100, payout);
-  if (current.sessionId && link.api) {
-    // Required guest step: the host withholds the payout from its balance displays until now.
+  if (rank === 0 && current.sessionId && link.api) {
+    // Nothing to present for a loss; winning rounds reveal once the last coin lands (settleCoins).
     void link.api.revealOutcome({ sessionId: current.sessionId }).catch(() => {});
   }
   if (link.mode === 'demo') {
@@ -436,6 +540,7 @@ async function present(rank: Rank, multX100: number, payout: bigint): Promise<vo
 
 function onDragonRoar(rank: number, seconds: number, first: boolean): void {
   sfx.roar(rank, seconds);
+  if (first) startCoins(seconds);
   if (rank >= 4 && first && !(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false)) {
     el.shell.classList.remove('quake');
     void el.shell.offsetWidth; // restart the animation

@@ -208,6 +208,11 @@ export const sfx = {
     noise(0, seconds, 0.12 + rank * 0.03, 700 + rank * 120, 'bandpass', 0.7);
     if (rank >= 4) noise(0.1, seconds * 0.9, 0.18, 2600, 'highpass'); // the hiss of the flame
   },
+  coin(): void {
+    const f = 1568 * (1 + Math.random() * 0.12);
+    tone({ type: 'square', freq: f, dur: 0.05, gain: 0.035 });
+    tone({ type: 'sine', freq: f * 1.335, dur: 0.16, gain: 0.06, at: 0.04 });
+  },
   coach(): void {
     tone({ type: 'sine', freq: 880, dur: 0.12, gain: 0.06 });
     tone({ type: 'sine', freq: 1320, dur: 0.18, gain: 0.05, at: 0.08 });

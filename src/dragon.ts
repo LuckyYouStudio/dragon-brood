@@ -47,6 +47,8 @@ export class Dragon {
   private breed: Breed;
   private color: string;
   dead = false;
+  /** Where the mouth is and where it points, in the layer's space — coins leave from here. */
+  mouth: (P & { angle: number }) | null = null;
 
   /** `onRoar` fires at the start of every roar so the game can shake and sound it. */
   constructor(private rank: number, private onRoar: (rank: number, seconds: number, first: boolean) => void) {
@@ -174,6 +176,9 @@ export class Dragon {
     ctx.scale(hs, hs);
     this.drawHead(ctx, roarK);
     ctx.restore();
+
+    const reach = hs * (0.75 + b.snout * 0.45);
+    this.mouth = { x: ox + tip.x + Math.cos(headAngle) * reach, y: oy + tip.y + Math.sin(headAngle) * reach + hs * 0.12, angle: headAngle };
 
     // ---- breath
     if (roarT >= 0 && !reducedMotion && this.leaving < 0) {

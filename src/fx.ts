@@ -8,12 +8,21 @@ type Spark = {
 
 type Flake = { x: number; y: number; vx: number; vy: number; rot: number; vr: number; w: number; h: number; color: string; sway: number };
 
+type Coin = {
+  delay: number; t: number; dur: number; started: boolean; spin: number; spinRate: number;
+  sx: number; sy: number; cx: number; cy: number; index: number;
+};
+
 /** Heat sparks that fly from cleared eggs to the nest, drawn over the whole shell. */
 export class SparkLayer {
   private ctx: CanvasRenderingContext2D;
   private sparks: Spark[] = [];
   private flakes: Flake[] = [];
   private dragon: Dragon | null = null;
+  private coins: Coin[] = [];
+  private coinTarget: (() => { x: number; y: number }) | null = null;
+  private onCoin: ((index: number) => void) | null = null;
+  private fallbackMouth: (() => { x: number; y: number }) | null = null;
   private edge: (() => HatchEdge) | null = null;
   private rain = { left: 0, rate: 0, carry: 0, colors: ['#ffd24a'] };
   private w = 0;
@@ -60,6 +69,39 @@ export class SparkLayer {
     this.edge = edge;
   }
 
+  /**
+   * The dragon coughs up the win: `count` coins leave its mouth over `seconds` and home in on the
+   * balance. `onArrive` fires once per coin as it lands. Points are client-space.
+   */
+  spitCoins(
+    count: number,
+    seconds: number,
+    target: () => { x: number; y: number },
+    fallbackMouth: () => { x: number; y: number },
+    onArrive: (index: number) => void,
+  ): void {
+    this.coinTarget = target;
+    this.fallbackMouth = fallbackMouth;
+    this.onCoin = onArrive;
+    for (let i = 0; i < count; i++) {
+      this.coins.push({
+        delay: (i / count) * seconds,
+        t: 0,
+        dur: 0.7 + Math.random() * 0.35,
+        started: false,
+        spin: Math.random() * 6,
+        spinRate: 9 + Math.random() * 8,
+        sx: 0, sy: 0, cx: 0, cy: 0,
+        index: i,
+      });
+    }
+  }
+
+  /** Drops whatever is still in the air without crediting it (the caller settles the rest). */
+  clearCoins(): void {
+    this.coins = [];
+  }
+
   dismissDragon(): void {
     this.dragon?.leave();
   }
@@ -94,6 +136,34 @@ export class SparkLayer {
     if (this.dragon) {
       this.dragon.update(dt);
       if (this.dragon.dead) this.dragon = null;
+    }
+    if (this.coins.length) {
+      const rect = this.canvas.getBoundingClientRect();
+      for (const coin of this.coins) {
+        if (coin.delay > 0) {
+          coin.delay -= dt;
+          continue;
+        }
+        if (!coin.started) {
+          coin.started = true;
+          // leave from the mouth, thrown along where the head points, then curl toward the balance
+          const mouth = this.dragon?.mouth;
+          const from = mouth ?? (() => {
+            const p = this.fallbackMouth!();
+            return { x: p.x - rect.left, y: p.y - rect.top, angle: -0.6 };
+          })();
+          const a = from.angle + (Math.random() - 0.5) * 0.9;
+          const throwDist = 90 + Math.random() * 130;
+          coin.sx = from.x;
+          coin.sy = from.y;
+          coin.cx = from.x + Math.cos(a) * throwDist;
+          coin.cy = from.y + Math.sin(a) * throwDist - 40 - Math.random() * 60;
+        }
+        coin.t += dt / coin.dur;
+        coin.spin += coin.spinRate * dt;
+        if (coin.t >= 1) this.onCoin?.(coin.index);
+      }
+      this.coins = this.coins.filter(coin => coin.t < 1);
     }
     if (this.rain.left > 0) {
       this.rain.left -= dt;
@@ -165,5 +235,55 @@ export class SparkLayer {
     }
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'source-over';
+
+    if (this.coins.length && this.coinTarget) {
+      const rect = this.canvas.getBoundingClientRect();
+      const target = this.coinTarget();
+      const tx = target.x - rect.left;
+      const ty = target.y - rect.top;
+      const radius = this.w < 520 ? 5.5 : 7.5;
+      for (const coin of this.coins) {
+        if (!coin.started) continue;
+        for (let ghost = 2; ghost >= 0; ghost--) {
+          const k = Math.max(0, coin.t - ghost * 0.05);
+          const e = k * k * (3 - 2 * k);
+          const u = 1 - e;
+          const x = u * u * coin.sx + 2 * u * e * coin.cx + e * e * tx;
+          const y = u * u * coin.sy + 2 * u * e * coin.cy + e * e * ty;
+          const r = radius * (1 - e * 0.35);
+          if (ghost > 0) {
+            ctx.globalAlpha = 0.18 / ghost;
+            ctx.fillStyle = '#ffd24a';
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fill();
+            continue;
+          }
+          ctx.globalAlpha = 1;
+          const face = Math.max(0.18, Math.abs(Math.cos(coin.spin)));
+          ctx.save();
+          ctx.translate(x, y);
+          ctx.scale(face, 1);
+          ctx.beginPath();
+          ctx.arc(0, 0, r, 0, Math.PI * 2);
+          const gold = ctx.createLinearGradient(-r, -r, r, r);
+          gold.addColorStop(0, '#fff3b0');
+          gold.addColorStop(0.5, '#ffc83a');
+          gold.addColorStop(1, '#b8740c');
+          ctx.fillStyle = gold;
+          ctx.fill();
+          ctx.lineWidth = Math.max(1, r * 0.22);
+          ctx.strokeStyle = '#7a4a06';
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(0, 0, r * 0.55, 0, Math.PI * 2);
+          ctx.strokeStyle = 'rgba(122,74,6,0.55)';
+          ctx.lineWidth = Math.max(1, r * 0.14);
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+      ctx.globalAlpha = 1;
+    }
   }
 }
