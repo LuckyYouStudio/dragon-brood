@@ -121,6 +121,10 @@ export const sfx = {
     );
     noise(0, 0.5, 0.06, 500, 'lowpass');
   },
+  /** A bigger egg just became available. */
+  unlock(): void {
+    [523.25, 659.25, 783.99].forEach((f, i) => tone({ type: 'triangle', freq: f, dur: 0.3, gain: 0.1, at: i * 0.07 }));
+  },
   shrink(): void {
     tone({ type: 'sine', freq: 420, to: 260, dur: 0.14, gain: 0.07 });
   },

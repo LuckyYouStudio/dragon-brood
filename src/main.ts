@@ -95,7 +95,6 @@ if (import.meta.env.DEV) {
   if (forcedHeat !== null) heat = Number(forcedHeat);
 }
 let size = 1;
-let pinned: number | null = null; // a smaller size the player chose on purpose
 let round: Round | null = null;
 let error: string | null = null;
 let demoBalance = DEMO_START;
@@ -234,6 +233,7 @@ function settleCoins(): void {
 
 function chooseSize(next: number, announce: boolean): void {
   size = next;
+  saveNumber('brood.size', size);
   nest.setSize(size, announce);
   hitRank = null;
   render();
@@ -243,9 +243,9 @@ function addHeat(amount: number): void {
   const before = maxUnlocked();
   heat = Math.min(HEAT_CAP, heat + amount);
   saveNumber('brood.heat', heat);
-  const after = maxUnlocked();
-  if (after > before && !inFlight() && pinned === null) chooseSize(after, true);
-  else renderHeat();
+  // A bigger egg is only ever offered, never chosen for the player: size is a bet decision.
+  if (maxUnlocked() > before) sfx.unlock();
+  renderHeat();
 }
 
 board.onClear = ({ cells, heat: total }) => {
@@ -280,7 +280,6 @@ function renderSizes(): void {
           sfx.invalid();
           return;
         }
-        pinned = s < maxUnlocked() ? s : null;
         finishRound();
         chooseSize(s, true);
       });
@@ -312,7 +311,7 @@ function renderHeat(): void {
   el.heatText.textContent = t('heat', { n: heat });
   const unlocked = maxUnlocked();
   el.heatNext.textContent =
-    unlocked < MAX_SIZE ? t('heatTo', { n: SIZE_HEAT[unlocked + 1] - heat, size: sizeName(unlocked + 1) }) : t('heatFull');
+    unlocked > size && !inFlight() ? t('biggerReady') : unlocked < MAX_SIZE ? t('heatTo', { n: SIZE_HEAT[unlocked + 1] - heat, size: sizeName(unlocked + 1) }) : t('heatFull');
   const span = unlocked < MAX_SIZE ? SIZE_HEAT[unlocked + 1] - SIZE_HEAT[unlocked] : 1;
   nest.setCharge(unlocked < MAX_SIZE ? (heat - SIZE_HEAT[unlocked]) / span : 1);
   renderSizes();
@@ -494,8 +493,8 @@ function finishRound(): void {
   sparks.stopCelebration();
   sparks.dismissDragon();
   nest.reset();
-  const unlocked = maxUnlocked();
-  chooseSize(pinned !== null ? Math.min(pinned, unlocked) : unlocked, false);
+  // Keep the size the player picked; only step down when the nest can no longer afford it.
+  chooseSize(Math.min(size, maxUnlocked()), false);
 }
 
 async function present(rank: Rank, multX100: number, payout: bigint): Promise<void> {
@@ -909,7 +908,7 @@ link = connectHost(() => {
   render();
 });
 
-size = maxUnlocked();
+size = Math.min(loadNumber('brood.size', 1), maxUnlocked());
 nest.setSize(size, false);
 renderSound();
 renderAuto();
