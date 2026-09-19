@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "gameId": "DragonBroodGame",
+  "apiVersion": 1,
+  "defaultLocale": "en",
+  "locales": {
+    "en": {
+      "name": "Dragon Brood",
+      "description": "Match dragon eggs to grow the one in your nest, then pay to crack it. Bigger egg, bigger dragons, more duds — every size returns 96%."
+    },
+    "zh": {
+      "name": "龙巢",
+      "description": "三消龙蛋喂大巢中的蛋，付费开蛋。蛋越大，龙越大、空壳也越多——每个尺寸的回报率都是 96%。"
+    }
+  },
+  "presentation": {
+    "mode": "full-iframe",
+    "hostPanels": { "openSession": false, "history": false, "status": false }
+  },
+  "capabilities": {
+    "openSession": true,
+    "submitAction": false,
+    "forfeitExpiredSession": false,
+    "cancelStuckRandomness": true,
+    "resize": true
+  }
+}

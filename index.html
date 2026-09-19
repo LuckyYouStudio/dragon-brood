@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0d0a10" />
+    <title>Dragon Brood — match the clutch, crack the egg</title>
+    <meta
+      name="description"
+      content="A casino game with a match-3 heart. Match dragon eggs to grow the one in your nest, then pay to crack it. Bigger egg, bigger dragons, more duds. 96% RTP at every size."
+    />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M32 4c12 0 22 18 22 33S44 60 32 60 10 52 10 37 20 4 32 4z' fill='%238a2a2a'/%3E%3Cpath d='M18 36c8-8 20-8 28 0-8 8-20 8-28 0z' fill='%23ffd24a'/%3E%3Cellipse cx='32' cy='36' rx='2' ry='6' fill='%23050307'/%3E%3C/svg%3E" />
+    <script async src="https://jam.chain.wtf/widget.js"></script>
+  </head>
+  <body>
+    <div id="app" class="shell">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand__name" data-i18n="title">Dragon Brood</span>
+          <span id="mode-badge" class="badge" data-i18n="demo" hidden>DEMO</span>
+        </div>
+        <div class="topbar__right">
+          <div class="balance" title="Balance">
+            <span class="balance__label" data-i18n="balance">Balance</span>
+            <span id="balance" class="balance__value">—</span>
+          </div>
+          <button id="btn-lang" class="icon-btn icon-btn--text" aria-label="Language / 语言">中文</button>
+          <button id="btn-info" class="icon-btn" data-i18n-aria="howTo" aria-label="How to play">?</button>
+          <button id="btn-sound" class="icon-btn" data-i18n-aria="sound" aria-label="Toggle sound"></button>
+        </div>
+      </header>
+
+      <main class="play">
+        <section class="nest" data-i18n-aria="nest" aria-label="Nest">
+          <canvas id="nest-canvas"></canvas>
+          <div id="result" class="result" aria-live="polite"></div>
+          <div class="nest__meta">
+            <div class="sizes" id="sizes" role="radiogroup" data-i18n-aria="eggSize" aria-label="Egg size"></div>
+            <div class="heat">
+              <div class="heat__bar"><div id="heat-fill" class="heat__fill"></div><div id="heat-ticks"></div></div>
+              <div class="heat__label"><span id="heat-text">Heat 0</span><span id="heat-next"></span></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="pay" aria-label="What can hatch">
+          <div class="pay__head">
+            <span id="pay-title">Pebble egg</span>
+            <span id="pay-sub" class="pay__sub"></span>
+          </div>
+          <div id="pay-rows" class="pay__rows"></div>
+        </section>
+
+        <section class="board" data-i18n-aria="board" aria-label="Match-3 board">
+          <canvas id="board-canvas"></canvas>
+          <p class="board__hint" data-i18n="boardHint">Match 3 to feed the nest. Matching is free — only cracking costs.</p>
+        </section>
+
+        <section class="bet" aria-label="Bet">
+          <div class="bet__row">
+            <label class="wager">
+              <span class="wager__label" data-i18n="crackPrice">Crack price</span>
+              <input id="wager" class="wager__input" inputmode="decimal" autocomplete="off" value="1.00" />
+              <span id="symbol" class="wager__symbol"></span>
+            </label>
+            <div class="quick">
+              <button data-quick="half">½</button>
+              <button data-quick="double">2×</button>
+              <button data-quick="max" data-i18n="max">Max</button>
+            </div>
+          </div>
+          <button id="cta" class="cta" disabled>Crack the egg</button>
+          <p id="reason" class="reason"></p>
+          <div id="history" class="history" data-i18n-aria="recent" aria-label="Recent hatches"></div>
+        </section>
+      </main>
+
+      <canvas id="fx-canvas" class="fx" aria-hidden="true"></canvas>
+
+      <dialog id="info" class="info">
+        <form method="dialog"><button class="info__close" aria-label="Close">×</button></form>
+        <div id="info-body"></div>
+      </dialog>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
