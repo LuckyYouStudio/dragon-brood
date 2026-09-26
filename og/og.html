@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Dragon Brood — og image</title>
+    <!-- Dev-only page: renders the 1200×630 share card with the game's own art.
+         npm run dev, then screenshot http://localhost:5173/og/og.html at 1200×630. -->
+    <style>
+      html, body { margin: 0; width: 1200px; height: 630px; overflow: hidden; }
+      body {
+        position: relative;
+        background:
+          radial-gradient(ellipse 60% 80% at 76% 62%, rgba(255, 140, 40, 0.28), transparent 65%),
+          radial-gradient(ellipse 50% 70% at 10% 0%, rgba(120, 60, 200, 0.22), transparent 70%),
+          #0d0a10;
+        color: #f3e9d2;
+        font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+      }
+      .frame { position: absolute; inset: 14px; border: 1px solid rgba(255, 210, 74, 0.35); border-radius: 18px; pointer-events: none; z-index: 20; }
+      .copy { position: absolute; left: 72px; top: 70px; width: 560px; z-index: 5; }
+      h1 {
+        margin: 0; font: 900 88px/0.95 'Cinzel', serif; letter-spacing: 0.02em;
+        background: linear-gradient(180deg, #fff3b0, #ffd24a 45%, #b0720f);
+        -webkit-background-clip: text; background-clip: text; color: transparent;
+        filter: drop-shadow(0 4px 0 #2b1604) drop-shadow(0 0 24px rgba(255, 170, 40, 0.35));
+      }
+      .tag { margin: 18px 0 0; font: 700 25px 'Cinzel', serif; color: #f3e9d2; letter-spacing: 0.03em; }
+      .points { margin: 34px 0 0; padding: 0; list-style: none; display: grid; gap: 14px; }
+      .points li { display: flex; align-items: center; gap: 14px; font-size: 24px; color: #e6dcc6; }
+      .points b { color: #ffd24a; }
+      .dot { width: 12px; height: 12px; border-radius: 50%; flex: none; box-shadow: 0 0 12px currentColor; background: currentColor; }
+      .eggs { position: absolute; left: 60px; bottom: 44px; display: flex; gap: 6px; z-index: 5; }
+      .eggs canvas { width: 76px; height: 76px; }
+      #nest { position: absolute; left: 660px; top: 110px; width: 520px; height: 520px; z-index: 2; -webkit-mask-image: radial-gradient(closest-side, #000 70%, transparent); mask-image: radial-gradient(closest-side, #000 70%, transparent); }
+      #fx { position: absolute; inset: 0; width: 1200px; height: 630px; z-index: 3; pointer-events: none; }
+      .badge {
+        position: absolute; right: 44px; top: 40px; z-index: 6; font: 800 22px system-ui; color: #1a0f00;
+        background: linear-gradient(180deg, #ffe58a, #f0a818); border-radius: 999px; padding: 8px 18px;
+        box-shadow: 0 6px 20px rgba(255, 170, 40, 0.4);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="frame"></div>
+    <div class="copy">
+      <h1>Dragon<br />Brood</h1>
+      <p class="tag">Match the clutch. Crack the egg.</p>
+      <ul class="points">
+        <li><span class="dot" style="color:#6fe07a"></span>Match-3 is free — it grows the egg</li>
+        <li><span class="dot" style="color:#b88aff"></span>Five egg sizes, every one returns <b>96%</b></li>
+        <li><span class="dot" style="color:#ffd24a"></span>Crack an Elder egg for up to <b>2500×</b></li>
+      </ul>
+    </div>
+    <div class="eggs" id="eggs"></div>
+    <div class="badge">Provably fair · on-chain VRF</div>
+    <canvas id="nest"></canvas>
+    <canvas id="fx"></canvas>
+    <script type="module" src="./og.ts"></script>
+  </body>
+</html>
